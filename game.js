@@ -24,7 +24,7 @@ let game = {
   setEventsListeners() {
     window.addEventListener('keydown', e => {
       if (e.keyCode === KEYS.SPACE) {
-        this.ball.start()
+        this.platform.fire()
       } else if (e.keyCode === KEYS.LEFT || e.keyCode === KEYS.RIGHT) {
         this.platform.start(e.keyCode)
       }
@@ -90,15 +90,33 @@ let game = {
   }
 };
 
+game.ball = {
+  x: 320,
+  y: 280,
+  size: 20,
+  dx: 0,
+  dy: 0,
+  velocity: 3,
+  start() {
+    this.dy = -this.velocity
+  },
+  move() {
+    if (this.dy) {
+      this.y += this.dy
+    }
+  }
+}
+
 game.platform = {
   x: 280,
   y: 300,
   dx: 0,
   velocity: 6,
+  ball: game.ball,
   move() {
     if (this.dx) {
       this.x += this.dx
-      game.ball.x += this.dx
+      if (this.ball) this.ball.x += this.dx
     }
   },
   start(direction) {
@@ -110,25 +128,15 @@ game.platform = {
   },
   stop() {
     this.dx = 0
-  }
-}
-
-game.ball = {
-  x: 320,
-  y: 280,
-  size: 20,
-  dx: 0,
-  dy: 0,
-  velocity: -3,
-  start() {
-    this.dy = this.velocity
   },
-  move() {
-    if (this.dy) {
-      this.y += this.dy
+  fire () {
+    if (this.ball) {
+      this.ball.start()
+      this.ball = null
     }
   }
 }
+
 
 window.addEventListener("load", () => {
   game.start();
