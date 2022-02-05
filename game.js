@@ -4,6 +4,9 @@ const KEYS = {
   SPACE: 32
 }
 
+const CANVAS_WIDTH = 640
+const CANVAS_HEIGHT = 360
+
 let game = {
   ctx: null,
   platform: null,
@@ -18,7 +21,10 @@ let game = {
     block: null
   },
   init: function () {
-    this.ctx = document.getElementById("canvas").getContext("2d");
+    const canvas = document.getElementById("canvas")
+    canvas.width = CANVAS_WIDTH
+    canvas.height = CANVAS_HEIGHT
+    this.ctx = canvas.getContext("2d");
     this.setEventsListeners()
   },
   setEventsListeners() {
@@ -56,7 +62,9 @@ let game = {
       for (let col = 0; col < this.cols; col++) {
         this.blocks.push({
           x: (col + 1) * 64,
-          y: (row + 1) * 24
+          y: (row + 1) * 24,
+          height: 20,
+          width: 60
         })
       }
     }
@@ -64,6 +72,12 @@ let game = {
   update() {
     this.platform.move()
     this.ball.move()
+
+    for (let block of this.blocks) {
+      if (this.ball.collide(block)) this.ball.bumbBlock(block)
+    }
+
+    if (this.ball.collide(this.platform)) this.ball.bumbPlatform(this.platform)
   },
   run() {
     window.requestAnimationFrame(() => {
@@ -73,6 +87,7 @@ let game = {
     });
   },
   render() {
+    this.ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
     this.ctx.drawImage(this.sprites.background, 0, 0);
     this.ctx.drawImage(this.sprites.platform, this.platform.x, this.platform.y);
     this.ctx.drawImage(this.sprites.ball, 0, 0, this.ball.size, this.ball.size, this.ball.x, this.ball.y, this.ball.size, this.ball.size);
@@ -87,6 +102,9 @@ let game = {
       this.create()
       this.run()
     })
+  },
+  random(min, max) {
+    return Math.floor(Math.random() * (max - min + 1) + min)
   }
 };
 
@@ -99,11 +117,32 @@ game.ball = {
   velocity: 3,
   start() {
     this.dy = -this.velocity
+    this.dx = game.random(-this.velocity, this.velocity)
   },
   move() {
     if (this.dy) {
       this.y += this.dy
     }
+
+    if (this.dx) {
+      this.x += this.dx
+    }
+  },
+  collide(element) {
+    const x = this.x + this.dx
+    const y = this.y + this.dy
+    return x + this.size > element.x &&
+        x < element.x + element.width &&
+        y + this.size > element.y &&
+        y < element.y + element.height
+  },
+  bumbBlock(block) {
+    this.dy *= -1
+  },
+  bumbPlatform(platform) {
+    this.dy *= -1
+    const touchX = this.x + this.size / 2
+    // TODO добавить управление мячов
   }
 }
 
@@ -111,6 +150,8 @@ game.platform = {
   x: 280,
   y: 300,
   dx: 0,
+  height: 14,
+  width: 100,
   velocity: 6,
   ball: game.ball,
   move() {
@@ -129,7 +170,7 @@ game.platform = {
   stop() {
     this.dx = 0
   },
-  fire () {
+  fire() {
     if (this.ball) {
       this.ball.start()
       this.ball = null
