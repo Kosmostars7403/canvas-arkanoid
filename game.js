@@ -78,7 +78,7 @@ let game = {
   },
   collideBlocks() {
     for (let block of this.blocks) {
-      if (this.ball.collide(block)) this.ball.bumbBlock(block)
+      if (!block.destroyed && this.ball.collide(block)) this.ball.bumbBlock(block)
     }
   },
   collidePlatform() {
@@ -98,6 +98,7 @@ let game = {
     this.ctx.drawImage(this.sprites.ball, 0, 0, this.ball.size, this.ball.size, this.ball.x, this.ball.y, this.ball.size, this.ball.size);
 
     for (let block of this.blocks) {
+      if(block.destroyed) continue
       this.ctx.drawImage(this.sprites.block, block.x, block.y);
     }
   },
@@ -143,6 +144,7 @@ game.ball = {
   },
   bumbBlock(block) {
     this.dy *= -1
+    block.destroyed = true
   },
   bumbPlatform(platform) {
     this.dy *= -1
