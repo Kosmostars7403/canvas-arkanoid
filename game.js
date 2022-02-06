@@ -14,6 +14,8 @@ let game = {
   blocks: [],
   rows: 4,
   cols: 8,
+  score: 0,
+  over: false,
   sprites: {
     background: null,
     ball: null,
@@ -64,32 +66,51 @@ let game = {
           x: (col + 1) * 64,
           y: (row + 1) * 24,
           height: 20,
-          width: 60
+          width: 60,
+          destroyed: false
         })
       }
     }
   },
   update() {
-    this.platform.move()
-    this.ball.move()
-
     this.collideBlocks()
     this.collidePlatform()
+    this.ball.collideScreenFrame()
+    this.platform.collideScreenFrame()
+    this.platform.move()
+    this.ball.move()
+  },
+  addScore() {
+    ++this.score
+
+    if (this.score === this.blocks.length) {
+      this.end('VICTORY!')
+    }
   },
   collideBlocks() {
     for (let block of this.blocks) {
-      if (!block.destroyed && this.ball.collide(block)) this.ball.bumbBlock(block)
+      if (!block.destroyed && this.ball.collide(block)) {
+        this.ball.bumpBlock(block)
+        this.addScore()
+      }
     }
   },
   collidePlatform() {
-    if (this.ball.collide(this.platform)) this.ball.bumbPlatform(this.platform)
+    if (this.ball.collide(this.platform)) this.ball.bumpPlatform(this.platform)
+  },
+  end(message) {
+    this.over = true
+    window.alert(message)
+    window.location.reload()
   },
   run() {
-    window.requestAnimationFrame(() => {
-      this.update()
-      this.render()
-      this.run()
-    });
+    if (!this.over) {
+      window.requestAnimationFrame(() => {
+        this.update()
+        this.render()
+        this.run()
+      });
+    }
   },
   render() {
     this.ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
@@ -98,7 +119,7 @@ let game = {
     this.ctx.drawImage(this.sprites.ball, 0, 0, this.ball.size, this.ball.size, this.ball.x, this.ball.y, this.ball.size, this.ball.size);
 
     for (let block of this.blocks) {
-      if(block.destroyed) continue
+      if (block.destroyed) continue
       this.ctx.drawImage(this.sprites.block, block.x, block.y);
     }
   },
@@ -142,14 +163,37 @@ game.ball = {
         y + this.size > element.y &&
         y < element.y + element.height
   },
-  bumbBlock(block) {
+  collideScreenFrame() {
+    const screenLeft = 0
+    const screenTop = 0
+
+    const ballRight = this.x + this.size
+    const ballBottom = this.y + this.size
+
+    if (this.x < screenLeft || ballRight > CANVAS_WIDTH) {
+      this.dx *= -1
+    } else if (this.y < screenTop) {
+      this.dy = this.velocity
+    } else if(ballBottom > CANVAS_HEIGHT) {
+      this.dx = 0
+      this.dy = 0
+      game.end('GAME OVER!')
+    }
+  },
+  bumpBlock(block) {
     this.dy *= -1
     block.destroyed = true
   },
-  bumbPlatform(platform) {
-    this.dy *= -1
-    const touchX = this.x + this.size / 2
-    this.dx = this.velocity * game.platform.getTouchOffset(touchX)
+  bumpPlatform(platform) {
+    if (platform.dx) {
+      this.x += platform.dx
+    }
+
+    if (this.dy > 0)  {
+      this.dy = -this.velocity
+      const touchX = this.x + this.size / 2
+      this.dx = this.velocity * platform.getTouchOffset(touchX)
+    }
   }
 }
 
@@ -188,9 +232,18 @@ game.platform = {
     let offset = this.width - diff
     let result = 2 * offset / this.width
     return result - 1
+  },
+  collideScreenFrame() {
+    const x = this.x + this.dx
+    const screenLeft = 0
+
+    const platformRight = x + this.width
+
+    if (x < screenLeft || platformRight > CANVAS_WIDTH) {
+      this.dx = 0
+    }
   }
 }
-
 
 window.addEventListener("load", () => {
   game.start();
