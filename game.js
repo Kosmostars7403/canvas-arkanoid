@@ -16,6 +16,9 @@ let game = {
   cols: 8,
   score: 0,
   over: false,
+  sounds: {
+    bump: null
+  },
   sprites: {
     background: null,
     ball: null,
@@ -28,6 +31,11 @@ let game = {
     canvas.height = CANVAS_HEIGHT
     this.ctx = canvas.getContext("2d");
     this.setEventsListeners()
+    this.setTextFont()
+  },
+  setTextFont() {
+    this.ctx.font = '20px Arial'
+    this.ctx.fillStyle = '#FFFFFF'
   },
   setEventsListeners() {
     window.addEventListener('keydown', e => {
@@ -44,20 +52,27 @@ let game = {
   },
   preload(callback) {
     const assetsNames = Object.keys(this.sprites)
+    const required = Object.keys(this.sprites).length + Object.keys(this.sounds).length
     let loaded = 0
 
-    const onImageLoad = () => {
+    const onAssetLoad = () => {
       loaded += 1
-      if (loaded > assetsNames.length - 1) {
+      if (loaded >= required) {
         callback()
       }
     }
 
-    assetsNames.forEach((key, index) => {
+    for (let key in this.sprites) {
       this.sprites[key] = new Image();
       this.sprites[key].src = `img/${key}.png`
-      this.sprites[key].addEventListener('load', onImageLoad)
-    })
+      this.sprites[key].addEventListener('load', onAssetLoad)
+    }
+
+    for (let key in this.sounds) {
+      this.sounds[key] = new Audio(`sounds/${key}.mp3`)
+      this.sounds[key].addEventListener('canplaythrough', onAssetLoad, {once: true})
+    }
+
   },
   create() {
     for (let row = 0; row < this.rows; row++) {
@@ -92,11 +107,15 @@ let game = {
       if (!block.destroyed && this.ball.collide(block)) {
         this.ball.bumpBlock(block)
         this.addScore()
+        this.sounds.bump.play()
       }
     }
   },
   collidePlatform() {
-    if (this.ball.collide(this.platform)) this.ball.bumpPlatform(this.platform)
+    if (this.ball.collide(this.platform)) {
+      this.ball.bumpPlatform(this.platform)
+      this.sounds.bump.play()
+    }
   },
   end(message) {
     this.over = true
@@ -116,12 +135,24 @@ let game = {
     this.ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
     this.ctx.drawImage(this.sprites.background, 0, 0);
     this.ctx.drawImage(this.sprites.platform, this.platform.x, this.platform.y);
-    this.ctx.drawImage(this.sprites.ball, 0, 0, this.ball.size, this.ball.size, this.ball.x, this.ball.y, this.ball.size, this.ball.size);
+    this.ctx.drawImage(
+        this.sprites.ball,
+        this.ball.frame * this.ball.size,
+        0,
+        this.ball.size,
+        this.ball.size,
+        this.ball.x,
+        this.ball.y,
+        this.ball.size,
+        this.ball.size
+    );
 
     for (let block of this.blocks) {
       if (block.destroyed) continue
       this.ctx.drawImage(this.sprites.block, block.x, block.y);
     }
+
+    this.ctx.fillText(`Score: ${this.score}`, 15, 20)
   },
   start: function () {
     this.init()
@@ -142,9 +173,19 @@ game.ball = {
   dx: 0,
   dy: 0,
   velocity: 3,
+  frame: 0,
+  framesAmount: 3,
   start() {
     this.dy = -this.velocity
     this.dx = game.random(-this.velocity, this.velocity)
+
+    this.animate()
+  },
+  animate() {
+    setInterval(() => {
+      this.frame += 1
+      if (this.frame > this.framesAmount) this.frame = 0
+    }, 500)
   },
   move() {
     if (this.dy) {
@@ -172,9 +213,12 @@ game.ball = {
 
     if (this.x < screenLeft || ballRight > CANVAS_WIDTH) {
       this.dx *= -1
+      game.sounds.bump.play()
     } else if (this.y < screenTop) {
       this.dy = this.velocity
-    } else if(ballBottom > CANVAS_HEIGHT) {
+      game.sounds.bump.play()
+    } else if (ballBottom > CANVAS_HEIGHT) {
+      game.sounds.bump.play()
       this.dx = 0
       this.dy = 0
       game.end('GAME OVER!')
@@ -189,7 +233,7 @@ game.ball = {
       this.x += platform.dx
     }
 
-    if (this.dy > 0)  {
+    if (this.dy > 0) {
       this.dy = -this.velocity
       const touchX = this.x + this.size / 2
       this.dx = this.velocity * platform.getTouchOffset(touchX)
