@@ -73,10 +73,15 @@ let game = {
     this.platform.move()
     this.ball.move()
 
+    this.collideBlocks()
+    this.collidePlatform()
+  },
+  collideBlocks() {
     for (let block of this.blocks) {
       if (this.ball.collide(block)) this.ball.bumbBlock(block)
     }
-
+  },
+  collidePlatform() {
     if (this.ball.collide(this.platform)) this.ball.bumbPlatform(this.platform)
   },
   run() {
@@ -142,7 +147,7 @@ game.ball = {
   bumbPlatform(platform) {
     this.dy *= -1
     const touchX = this.x + this.size / 2
-    // TODO добавить управление мячов
+    this.dx = this.velocity * game.platform.getTouchOffset(touchX)
   }
 }
 
@@ -175,6 +180,12 @@ game.platform = {
       this.ball.start()
       this.ball = null
     }
+  },
+  getTouchOffset(touchX) {
+    let diff = (this.x + this.width) - touchX
+    let offset = this.width - diff
+    let result = 2 * offset / this.width
+    return result - 1
   }
 }
 
